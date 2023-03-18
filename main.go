@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"sync"
@@ -18,6 +17,9 @@ var startTime time.Time
 var once sync.Once
 
 func currentTimeHandler(w http.ResponseWriter, r *http.Request) {
+
+	// Set the Access-Control-Allow-Origin header to allow requests from any domain
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	once.Do(func() {
 		startTime = time.Now()
@@ -46,7 +48,6 @@ func currentTimeHandler(w http.ResponseWriter, r *http.Request) {
 var embeddedFiles embed.FS
 
 func main() {
-	http.HandleFunc("/time", currentTimeHandler)
 
 	// Access the embedded files in the "../ng/dist/ng" directory
 	subFS, err := fs.Sub(embeddedFiles, "ng/dist/ng")
@@ -54,12 +55,16 @@ func main() {
 		panic(err)
 	}
 
+	// Create a multiplexer to handle requests on different ports
+	mux := http.NewServeMux()
+
 	// Serve embedded static files
 	fs := http.FileServer(http.FS(subFS))
-	http.Handle("/", http.StripPrefix("/", fs))
 
-	fmt.Println("Server starting on http://localhost:8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		panic(err)
-	}
+	mux.Handle("/", http.StripPrefix("/", fs))
+	go http.ListenAndServe(":8081", mux)
+
+	mux.HandleFunc("/time", currentTimeHandler)
+	http.ListenAndServe(":8070", mux)
+
 }
