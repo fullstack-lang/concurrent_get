@@ -2,20 +2,44 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"sync"
 	"time"
 )
 
+type TimeResponse struct {
+	UnixMilli int64
+}
+
+var startTime time.Time
+var once sync.Once
+
 func currentTimeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Only GET method is supported", http.StatusMethodNotAllowed)
+
+	once.Do(func() {
+		startTime = time.Now()
+	})
+
+	elapsed := time.Since(startTime)
+
+	now := int64(elapsed / time.Millisecond)
+
+	timeResponse := TimeResponse{
+		UnixMilli: now,
+	}
+
+	responseJSON, err := json.Marshal(timeResponse)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	currentTime := time.Now().UTC().Format("05.999Z07:00")
-	fmt.Fprint(w, currentTime)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJSON)
 }
 
 //go:embed ng/dist/ng

@@ -8,7 +8,7 @@ import { Subscription } from 'rxjs';
   styleUrls: ['./time-display.component.css']
 })
 export class TimeDisplayComponent implements OnInit, OnDestroy {
-  currentTime: string = ""
+  currentTime: number = 0
   private timeSubscription: Subscription = new Subscription
 
   constructor(private timeService: TimeService) { }
@@ -24,7 +24,7 @@ export class TimeDisplayComponent implements OnInit, OnDestroy {
   startAutoRefresh(intervalMs: number): void {
     this.timeSubscription = this.timeService
       .getCurrentTimeAutoRefresh(intervalMs)
-      .subscribe((time: string) => {
+      .subscribe((time: number) => {
         this.currentTime = time;
       });
   }

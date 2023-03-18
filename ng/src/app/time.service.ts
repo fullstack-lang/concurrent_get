@@ -5,6 +5,12 @@ import { Observable } from 'rxjs';
 // Add these imports at the top of your time.service.ts file
 import { interval } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
+
+
+export interface TimeResponse {
+  UnixMilli: number;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -14,10 +20,10 @@ export class TimeService {
 
   constructor(private http: HttpClient) { }
 
-  // Modify the getCurrentTime() method in your TimeService
-  getCurrentTimeAutoRefresh(intervalMs: number): Observable<string> {
+  getCurrentTimeAutoRefresh(intervalMs: number): Observable<number> {
     return interval(intervalMs).pipe(
-      switchMap(() => this.http.get(this.API_URL, { responseType: 'text' }))
+      switchMap(() => this.http.get<TimeResponse>(this.API_URL)),
+      map((response) => response.UnixMilli)
     );
   }
 
