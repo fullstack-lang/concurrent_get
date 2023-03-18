@@ -14,7 +14,7 @@ export class TimeDisplayComponent implements OnInit, OnDestroy {
   constructor(private timeService: TimeService) { }
 
   ngOnInit(): void {
-    this.startAutoRefresh(500); // Refresh every 500 ms (half second)
+    this.startAutoRefresh(1000); // Refresh every 2000 ms (half second)
   }
 
   ngOnDestroy(): void {
