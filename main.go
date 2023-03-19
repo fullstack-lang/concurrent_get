@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type TimeResponse struct {
@@ -16,11 +18,7 @@ type TimeResponse struct {
 var startTime time.Time
 var once sync.Once
 
-func currentTimeHandler(w http.ResponseWriter, r *http.Request) {
-
-	// Set the Access-Control-Allow-Origin header to allow requests from any domain
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
+func currentTimeHandler(c *gin.Context) {
 	once.Do(func() {
 		startTime = time.Now()
 	})
@@ -35,36 +33,35 @@ func currentTimeHandler(w http.ResponseWriter, r *http.Request) {
 
 	responseJSON, err := json.Marshal(timeResponse)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseJSON)
+	c.Header("Content-Type", "application/json")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.String(http.StatusOK, string(responseJSON))
 }
 
 //go:embed ng/dist/ng
 var embeddedFiles embed.FS
 
 func main() {
-
-	// Access the embedded files in the "../ng/dist/ng" directory
 	subFS, err := fs.Sub(embeddedFiles, "ng/dist/ng")
 	if err != nil {
 		panic(err)
 	}
 
-	// Create a multiplexer to handle requests on different ports
-	mux := http.NewServeMux()
+	// Create router1 for serving the static files
+	router1 := gin.Default()
+	router1.StaticFS("/", http.FS(subFS))
+	go router1.Run(":8081")
 
-	// Serve embedded static files
-	fs := http.FileServer(http.FS(subFS))
-
-	mux.Handle("/", http.StripPrefix("/", fs))
-	go http.ListenAndServe(":8081", mux)
-
-	mux.HandleFunc("/time", currentTimeHandler)
-	http.ListenAndServe(":8070", mux)
-
+	// Create router2 for serving the time endpoint
+	router2 := gin.Default()
+	router2.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Next()
+	})
+	router2.GET("/time", currentTimeHandler)
+	router2.Run(":8070")
 }
