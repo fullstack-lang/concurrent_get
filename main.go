@@ -3,11 +3,14 @@ package main
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 )
 
@@ -46,22 +49,38 @@ func currentTimeHandler(c *gin.Context) {
 var embeddedFiles embed.FS
 
 func main() {
-	subFS, err := fs.Sub(embeddedFiles, "ng/dist/ng")
-	if err != nil {
-		panic(err)
-	}
 
 	// Create router1 for serving the static files
 	router1 := gin.Default()
-	router1.StaticFS("/", http.FS(subFS))
-	go router1.Run(":8081")
+	router1.Use(cors.Default())
 
-	// Create router2 for serving the time endpoint
-	router2 := gin.Default()
-	router2.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Next()
+	router1.GET("/time", currentTimeHandler)
+
+	router1.Use(static.Serve("/", EmbedFolder(embeddedFiles, "ng/dist/ng")))
+	router1.NoRoute(func(c *gin.Context) {
+		fmt.Println(c.Request.URL.Path, "doesn't exists, redirect on /")
+		c.Redirect(http.StatusMovedPermanently, "/")
+		c.Abort()
 	})
-	router2.GET("/time", currentTimeHandler)
-	router2.Run(":8070")
+
+	router1.Run(":8080")
+}
+
+type embedFileSystem struct {
+	http.FileSystem
+}
+
+func (e embedFileSystem) Exists(prefix string, path string) bool {
+	_, err := e.Open(path)
+	return err == nil
+}
+
+func EmbedFolder(fsEmbed embed.FS, targetPath string) static.ServeFileSystem {
+	fsys, err := fs.Sub(fsEmbed, targetPath)
+	if err != nil {
+		panic(err)
+	}
+	return embedFileSystem{
+		FileSystem: http.FS(fsys),
+	}
 }

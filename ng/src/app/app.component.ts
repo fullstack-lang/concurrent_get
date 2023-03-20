@@ -10,5 +10,5 @@ import { Subscription } from 'rxjs';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  instances = Array(200).fill(0);
+  instances = Array(400).fill(0);
 }

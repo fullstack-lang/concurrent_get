@@ -16,7 +16,7 @@ export interface TimeResponse {
   providedIn: 'root',
 })
 export class TimeService {
-  private readonly API_URL = 'http://localhost:8070/time';
+  private readonly API_URL = 'http://localhost:8080/time';
 
   constructor(private http: HttpClient) { }
 
